@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+finnhub-python
+yfinance
+python-dotenv

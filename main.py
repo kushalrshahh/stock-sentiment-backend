@@ -15,14 +15,15 @@ async def root():
 @app.get("/sentiment/{ticker}")
 async def get_sentiment(ticker: str):
     try:
-        data = client.sentiment(ticker, "2026-02-01", "2026-02-21")  # 3 weeks data 
-        if not data['data']: return {"error": "No sentiment data"}
-        scores = [s['sentiment']['score'] for s in data['data']]
-        avg_score = sum(scores) / len(scores)
+        data = client.sentiment(ticker, "2026-02-01", "2026-02-21")
+        if not data or not data.get('data') or len(data['data']) == 0:
+            return {'ticker': ticker, 'score': 0.0, 'signal': 'HOLD', 'posts': 0}
+        scores = [s.get('sentiment', {}).get('score', 0) for s in data['data']]
+        avg_score = sum(scores) / len(scores) if scores else 0.0
         signal = 'BUY' if avg_score > 0.15 else 'SELL' if avg_score < -0.15 else 'HOLD'
         return {'ticker': ticker, 'score': round(avg_score, 3), 'signal': signal, 'posts': len(data['data'])}
     except Exception as e:
-        return {"error": str(e)}
+        return {'ticker': ticker, 'score': 0.0, 'signal': 'HOLD', 'error': str(e)}
 
 @app.get("/top10")
 async def get_top10_advice():

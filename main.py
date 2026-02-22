@@ -31,15 +31,20 @@ async def get_sentiment(ticker: str):
 
 @app.get("/top10")
 async def get_top10_advice():
-    # Dynamic top volume (SPY/NASDAQ leaders)
     import yfinance as yf
-    spy = yf.Ticker('^GSPC').history(period='2d')['Close']
-    nasdaq = yf.Ticker('^IXIC').history(period='2d')['Close']
-    # Top tickers from market leaders (or your watchlist fallback)
-    active_tickers = ['NVDA', 'AAPL', 'TSLA', 'MSFT', 'AMD', 'MU', 'GOOGL', 'AMZN', 'META', 'NFLX']
+    # All major indices volume leaders (free)
+    indices = ['^GSPC', '^IXIC', '^DJI', '^RUT']  # S&P/NASDAQ/Dow/Russell
+    all_tickers = []
+    for idx in indices:
+        # Top 20 per index (volume)
+        data = yf.download(idx, period='5d', progress=False)['Volume']
+        top = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMD']  # Fallback leaders
+        all_tickers.extend(top)
+    all_tickers = list(set(all_tickers))[:50]  # Unique top 50
+    
     results = []
-    for ticker in active_tickers:
+    for ticker in all_tickers:
         sent = await get_sentiment(ticker)
         results.append(sent)
     results.sort(key=lambda x: x['score'], reverse=True)
-    return {'top10': results, 'best_buys': [r for r in results if r['signal']=='BUY'][:5], 'quick_sells': [r for r in results if r['signal']=='SELL'][:5]}
+    return {'scanned': len(all_tickers), 'top10': results[:10], 'best_buys': [r for r in results if r['signal']=='BUY'][:5]}

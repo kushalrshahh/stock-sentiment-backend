@@ -1,10 +1,12 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from finnhub import Client
 import os
+import uvicorn
 from dotenv import load_dotenv
 
 load_dotenv()
-app = FastAPI()
+app = FastAPI(title="Stock Sentiment Backend")
 client = Client(api_key=os.getenv("FINNHUB_API_KEY"))
 
 @app.get("/")
@@ -28,6 +30,15 @@ async def get_sentiment(ticker: str):
         return {'ticker': ticker, 'score': round(avg_score, 3), 'signal': signal, 'posts': len(posts)}
     except:
         return {'ticker': ticker, 'score': 0.0, 'signal': 'HOLD', 'posts': 0}
+
+# CORS Fix - ADD THIS BLOCK
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all domains (or ["https://your-pwa.vercel.app"])
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/top10")
 async def get_top10_advice():

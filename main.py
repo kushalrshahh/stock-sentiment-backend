@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from finnhub import Client
-import yfinance as yf
 import os
 from dotenv import load_dotenv
 
@@ -15,30 +14,28 @@ async def root():
 @app.get("/sentiment/{ticker}")
 async def get_sentiment(ticker: str):
     try:
-        data = client.sentiment(ticker, "2026-02-01", "2026-02-21")
-        # Handle all Finnhub formats
-        posts = data.get('reddit', []) + data.get('twitter', []) + data.get('data', [])
+        response = client.sentiment(ticker, "2026-02-01", "2026-02-21")
+        posts = response.get('reddit', []) + response.get('twitter', []) + response.get('data', [])
         if not posts:
             return {'ticker': ticker, 'score': 0.0, 'signal': 'HOLD', 'posts': 0}
         scores = []
-        for p in posts:
-            score = p.get('sentiment', {}).get('score') or p.get('score') or 0
-            scores.append(float(score) if score else 0)
+        for post in posts:
+            sentiment = post.get('sentiment') or {}
+            score = sentiment.get('score') or post.get('score') or 0.0
+            scores.append(float(score))
         avg_score = sum(scores) / len(scores)
         signal = 'BUY' if avg_score > 0.15 else 'SELL' if avg_score < -0.15 else 'HOLD'
         return {'ticker': ticker, 'score': round(avg_score, 3), 'signal': signal, 'posts': len(posts)}
-    except Exception as e:
-        return {'ticker': ticker, 'score': 0.0, 'signal': 'HOLD', 'posts': 0, 'error': str(e)[:50]}
+    except:
+        return {'ticker': ticker, 'score': 0.0, 'signal': 'HOLD', 'posts': 0}
 
 @app.get("/top10")
 async def get_top10_advice():
-    active_tickers = ['NVDA', 'AAPL', 'TSLA', 'MSFT', 'AMD', 'MU', 'GOOGL', 'BAC', 'AMZN', 'META']  # Top daily vol[web:54]
+    active_tickers = ['NVDA', 'AAPL', 'TSLA', 'MSFT', 'AMD', 'MU', 'GOOGL', 'BAC', 'AMZN', 'META']
     results = []
     for ticker in active_tickers:
         sent = await get_sentiment(ticker)
-        if 'error' not in sent:
-            results.append(sent)
+        results.append(sent)
     results.sort(key=lambda x: x['score'], reverse=True)
-    buys = [r for r in results if r['signal']=='BUY'][:5]
-    sells = [r for r in results if r['signal']=='SELL'][:3]
-    return {'top10': results[:10], 'best_buys': buys, 'quick_sells': sells}
+    return {'top10': results, 'best_buys': [r for r in results if r['signal']=='BUY'][:5], 'quick_sells': [r for r in results if r['signal']=='SELL'][:5]}
+

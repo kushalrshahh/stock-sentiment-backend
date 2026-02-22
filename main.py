@@ -15,7 +15,7 @@ async def root():
 @app.get("/sentiment/{ticker}")
 async def get_sentiment(ticker: str):
     try:
-        data = client.sentiment(ticker, "2026-02-20", "2026-02-21")  # Yesterday-today
+        data = client.sentiment(ticker, "2026-02-01", "2026-02-21")  # 3 weeks data 
         if not data['data']: return {"error": "No sentiment data"}
         scores = [s['sentiment']['score'] for s in data['data']]
         avg_score = sum(scores) / len(scores)

@@ -16,14 +16,19 @@ async def root():
 async def get_sentiment(ticker: str):
     try:
         data = client.sentiment(ticker, "2026-02-01", "2026-02-21")
-        if not data or not data.get('data') or len(data['data']) == 0:
+        # Handle all Finnhub formats
+        posts = data.get('reddit', []) + data.get('twitter', []) + data.get('data', [])
+        if not posts:
             return {'ticker': ticker, 'score': 0.0, 'signal': 'HOLD', 'posts': 0}
-        scores = [s.get('sentiment', {}).get('score', 0) for s in data['data']]
-        avg_score = sum(scores) / len(scores) if scores else 0.0
+        scores = []
+        for p in posts:
+            score = p.get('sentiment', {}).get('score') or p.get('score') or 0
+            scores.append(float(score) if score else 0)
+        avg_score = sum(scores) / len(scores)
         signal = 'BUY' if avg_score > 0.15 else 'SELL' if avg_score < -0.15 else 'HOLD'
-        return {'ticker': ticker, 'score': round(avg_score, 3), 'signal': signal, 'posts': len(data['data'])}
+        return {'ticker': ticker, 'score': round(avg_score, 3), 'signal': signal, 'posts': len(posts)}
     except Exception as e:
-        return {'ticker': ticker, 'score': 0.0, 'signal': 'HOLD', 'error': str(e)}
+        return {'ticker': ticker, 'score': 0.0, 'signal': 'HOLD', 'posts': 0, 'error': str(e)[:50]}
 
 @app.get("/top10")
 async def get_top10_advice():
